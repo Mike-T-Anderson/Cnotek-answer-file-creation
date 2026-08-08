@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golden Image Generator — Windows Server Unattend Builder</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">G</div>
+    <div>
+      <h1>Golden Image Generator</h1>
+      <div class="sub">Windows Server 2019 · 2022 · 2025 unattend generator</div>
+    </div>
+  </div>
+  <div class="fname">
+    <label class="hint" for="f_filename">File</label>
+    <input type="text" id="f_filename" value="autounattend.xml">
+  </div>
+  <button id="btnUpload">⬆ Upload XML</button>
+  <button id="btnCopy">Copy</button>
+  <button class="primary" id="btnDownload">⬇ Download</button>
+  <button class="danger" id="btnReset" title="Clear the form back to defaults">Reset</button>
+  <input type="file" id="fileInput" accept=".xml,text/xml" hidden>
+</header>
+
+<div id="validation" class="banner err" style="margin:12px 18px 0"></div>
+
+<main>
+<div id="formcol">
+
+  <!-- 1 ─ Target platform -->
+  <section class="card" id="sec1">
+    <h2><span class="num">1</span> Target platform <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="inline" style="margin-top:10px">
+        <button class="mini" id="btnPackerPreset" title="Configure the form for a Packer golden-image build on Hyper-V Gen 2">⚡ Packer golden-image preset (Hyper-V Gen 2)</button>
+      </div>
+      <div class="seg">
+        <input type="radio" name="ver" id="f_ver2019" value="2019"><label for="f_ver2019">Server 2019</label>
+        <input type="radio" name="ver" id="f_ver2022" value="2022" checked><label for="f_ver2022">Server 2022</label>
+        <input type="radio" name="ver" id="f_ver2025" value="2025"><label for="f_ver2025">Server 2025</label>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="f_edition">Edition</label>
+          <select id="f_edition">
+            <option value="standard">Standard</option>
+            <option value="datacenter">Datacenter</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f_core">Install type</label>
+          <select id="f_core">
+            <option value="desktop">Desktop Experience (GUI)</option>
+            <option value="core">Server Core</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f_imageMode">Image selection (windowsPE › ImageInstall)</label>
+          <select id="f_imageMode">
+            <option value="name">By image name (built from choices above)</option>
+            <option value="index">By image index</option>
+            <option value="none">None — let the product key decide</option>
+          </select>
+        </div>
+        <div class="field" id="wrapImageIndex">
+          <label for="f_imageIndex">Image index</label>
+          <input type="number" id="f_imageIndex" min="1" max="20" value="2">
+        </div>
+      </div>
+      <label class="sw" style="margin-top:8px">
+        <input type="checkbox" id="f_evalMedia"><span class="tk"></span>
+        <span class="lbl">Evaluation Center media <small>(eval ISOs name images “… Standard Evaluation …” — required for name matching; leave the product key blank)</small></span>
+      </label>
+      <div class="hint" id="imageNameHint" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <!-- 2 ─ Product key & identity -->
+  <section class="card" id="sec2">
+    <h2><span class="num">2</span> Product key &amp; identity <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="field">
+        <label for="f_key">Product key <span style="font-weight:400">(leave blank for evaluation media)</span></label>
+        <div class="inline">
+          <input type="text" id="f_key" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" style="flex:1; font-family:var(--mono)">
+          <button class="mini kbtn" id="btnGvlk" title="Insert the public KMS client setup key (GVLK) for the selected version/edition">Use KMS / GVLK</button>
+        </div>
+        <div class="hint">GVLKs are Microsoft's public KMS client keys — they activate only against your KMS host / AD-based activation.</div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="f_fullname">Registered owner (FullName)</label>
+          <input type="text" id="f_fullname" value="Cnotek">
+        </div>
+        <div class="field">
+          <label for="f_org">Registered organization</label>
+          <input type="text" id="f_org" value="Cnotek">
+        </div>
+      </div>
+      <label class="sw" style="margin-top:8px">
+        <input type="checkbox" id="f_eula" checked><span class="tk"></span>
+        <span class="lbl">Accept EULA automatically</span>
+      </label>
+    </div>
+  </section>
+
+  <!-- 3 ─ Regional -->
+  <section class="card" id="sec3">
+    <h2><span class="num">3</span> Regional &amp; language <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="grid2">
+        <div class="field">
+          <label for="f_uilang">UI language (must match media)</label>
+          <input type="text" id="f_uilang" list="dlLoc" value="en-US">
+        </div>
+        <div class="field">
+          <label for="f_inlocale">Input locale (keyboard)</label>
+          <input type="text" id="f_inlocale" list="dlLoc" value="en-AU">
+        </div>
+        <div class="field">
+          <label for="f_syslocale">System locale</label>
+          <input type="text" id="f_syslocale" list="dlLoc" value="en-AU">
+        </div>
+        <div class="field">
+          <label for="f_userlocale">User locale</label>
+          <input type="text" id="f_userlocale" list="dlLoc" value="en-AU">
+        </div>
+      </div>
+      <div class="field">
+        <label for="f_tz">Time zone (Windows name)</label>
+        <input type="text" id="f_tz" list="dlTz" value="AUS Eastern Standard Time">
+      </div>
+      <datalist id="dlLoc">
+        <option value="en-US"><option value="en-AU"><option value="en-GB"><option value="en-NZ">
+        <option value="de-DE"><option value="fr-FR"><option value="es-ES"><option value="ja-JP">
+        <option value="zh-CN"><option value="pt-BR"><option value="it-IT"><option value="nl-NL">
+      </datalist>
+      <datalist id="dlTz">
+        <option value="AUS Eastern Standard Time"><option value="E. Australia Standard Time">
+        <option value="Cen. Australia Standard Time"><option value="AUS Central Standard Time">
+        <option value="W. Australia Standard Time"><option value="New Zealand Standard Time">
+        <option value="UTC"><option value="GMT Standard Time"><option value="W. Europe Standard Time">
+        <option value="Central Europe Standard Time"><option value="Romance Standard Time">
+        <option value="Eastern Standard Time"><option value="Central Standard Time">
+        <option value="Mountain Standard Time"><option value="Pacific Standard Time">
+        <option value="China Standard Time"><option value="Tokyo Standard Time">
+        <option value="India Standard Time"><option value="Singapore Standard Time">
+      </datalist>
+    </div>
+  </section>
+
+  <!-- 4 ─ Disk -->
+  <section class="card" id="sec4">
+    <h2><span class="num">4</span> Disk &amp; partitions <span class="caret">▾</span></h2>
+    <div class="body">
+      <label class="sw">
+        <input type="checkbox" id="f_diskEnable" checked><span class="tk"></span>
+        <span class="lbl">Partition the target disk <small>⚠ WillWipeDisk=true — everything on the disk is destroyed</small></span>
+      </label>
+      <div id="diskOpts">
+        <div class="grid3">
+          <div class="field">
+            <label for="f_firmware">Firmware / layout</label>
+            <select id="f_firmware">
+              <option value="uefi">UEFI (GPT)</option>
+              <option value="bios">BIOS (MBR)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f_diskId">Disk ID</label>
+            <input type="number" id="f_diskId" min="0" value="0">
+          </div>
+          <div class="field" id="wrapEfi">
+            <label for="f_efiSize">EFI partition (MB)</label>
+            <input type="number" id="f_efiSize" min="100" value="260">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f_osLabel">OS volume label</label>
+          <input type="text" id="f_osLabel" value="Windows">
+        </div>
+        <div class="hint" id="layoutHint" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 ─ Computer & accounts -->
+  <section class="card" id="sec5">
+    <h2><span class="num">5</span> Computer &amp; accounts <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="grid2">
+        <div class="field">
+          <label for="f_compname">Computer name (<code style="font-family:var(--mono)">*</code> = random)</label>
+          <input type="text" id="f_compname" value="*" maxlength="15">
+        </div>
+        <div class="field">
+          <label for="f_adminpw">Administrator password</label>
+          <div class="inline">
+            <input type="password" id="f_adminpw" class="nosave" style="flex:1" autocomplete="new-password">
+            <button class="mini" id="btnEye" title="Show / hide">👁</button>
+          </div>
+        </div>
+      </div>
+      <label class="sw">
+        <input type="checkbox" id="f_obfuscate" checked><span class="tk"></span>
+        <span class="lbl">Base64-obfuscate passwords in the XML <small>(PlainText=false — obfuscation, not encryption)</small></span>
+      </label>
+      <label class="sw">
+        <input type="checkbox" id="f_autologon"><span class="tk"></span>
+        <span class="lbl">Auto-logon as Administrator after setup</span>
+      </label>
+      <div class="field" id="wrapLogonCount" style="max-width:180px">
+        <label for="f_logoncount">Auto-logon count</label>
+        <input type="number" id="f_logoncount" min="1" max="99" value="1">
+      </div>
+      <div class="field">
+        <label>Additional local accounts</label>
+        <div class="rows" id="accountsList"></div>
+        <div><button class="mini" id="btnAddAccount">+ Add local account</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ─ Network -->
+  <section class="card" id="sec6">
+    <h2><span class="num">6</span> Network (static IPv4) <span class="caret">▾</span></h2>
+    <div class="body">
+      <label class="sw">
+        <input type="checkbox" id="f_netEnable"><span class="tk"></span>
+        <span class="lbl">Configure a static IPv4 address <small>(otherwise DHCP is used)</small></span>
+      </label>
+      <div id="netOpts">
+        <div class="grid2">
+          <div class="field">
+            <label for="f_ifid">Interface identifier (name or MAC)</label>
+            <input type="text" id="f_ifid" value="Ethernet" placeholder="Ethernet or 00-15-5D-xx-xx-xx">
+          </div>
+          <div class="field">
+            <label for="f_ip">IP address / prefix (CIDR)</label>
+            <input type="text" id="f_ip" placeholder="192.168.0.50/24">
+          </div>
+          <div class="field">
+            <label for="f_gw">Default gateway</label>
+            <input type="text" id="f_gw" placeholder="192.168.0.1">
+          </div>
+          <div class="field">
+            <label for="f_dnsdomain">DNS suffix (optional)</label>
+            <input type="text" id="f_dnsdomain" placeholder="corp.example.com">
+          </div>
+          <div class="field">
+            <label for="f_dns1">DNS server 1</label>
+            <input type="text" id="f_dns1" placeholder="192.168.0.10">
+          </div>
+          <div class="field">
+            <label for="f_dns2">DNS server 2 (optional)</label>
+            <input type="text" id="f_dns2" placeholder="8.8.8.8">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 ─ Domain / workgroup -->
+  <section class="card" id="sec7">
+    <h2><span class="num">7</span> Domain / workgroup <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="field">
+        <label for="f_joinMode">Membership</label>
+        <select id="f_joinMode">
+          <option value="none">Leave default (WORKGROUP)</option>
+          <option value="workgroup">Named workgroup</option>
+          <option value="domain">Join Active Directory domain</option>
+        </select>
+      </div>
+      <div class="field" id="wrapWorkgroup">
+        <label for="f_workgroup">Workgroup name</label>
+        <input type="text" id="f_workgroup" value="WORKGROUP">
+      </div>
+      <div id="domainOpts">
+        <div class="grid2">
+          <div class="field">
+            <label for="f_domain">Domain (FQDN)</label>
+            <input type="text" id="f_domain" placeholder="corp.example.com">
+          </div>
+          <div class="field">
+            <label for="f_ou">Machine OU (optional)</label>
+            <input type="text" id="f_ou" placeholder="OU=Servers,DC=corp,DC=example,DC=com">
+          </div>
+          <div class="field">
+            <label for="f_joinCredDomain">Join account — domain</label>
+            <input type="text" id="f_joinCredDomain" placeholder="CORP">
+          </div>
+          <div class="field">
+            <label for="f_joinCredUser">Join account — username</label>
+            <input type="text" id="f_joinCredUser" placeholder="svc-domainjoin">
+          </div>
+          <div class="field">
+            <label for="f_joinCredPw">Join account — password</label>
+            <input type="password" id="f_joinCredPw" class="nosave" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="hint" style="margin-top:6px">⚠ Domain-join credentials are stored in the answer file with only light obfuscation — use a least-privilege join account and delete the file from the machine afterwards.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 ─ RDP & tweaks -->
+  <section class="card" id="sec8">
+    <h2><span class="num">8</span> RDP &amp; quick tweaks <span class="caret">▾</span></h2>
+    <div class="body">
+      <label class="sw">
+        <input type="checkbox" id="f_rdp" checked><span class="tk"></span>
+        <span class="lbl">Enable Remote Desktop</span>
+      </label>
+      <div class="inline" id="rdpOpts" style="padding-left:43px">
+        <label class="sw"><input type="checkbox" id="f_nla" checked><span class="tk"></span><span class="lbl">Require NLA</span></label>
+        <label class="sw"><input type="checkbox" id="f_fw" checked><span class="tk"></span><span class="lbl">Open firewall group</span></label>
+      </div>
+      <label class="sw" id="swIeesc">
+        <input type="checkbox" id="f_ieesc"><span class="tk"></span>
+        <span class="lbl">Disable IE Enhanced Security Configuration <small id="ieescNote"></small></span>
+      </label>
+      <label class="sw">
+        <input type="checkbox" id="f_power"><span class="tk"></span>
+        <span class="lbl">High-performance power plan</span>
+      </label>
+      <label class="sw">
+        <input type="checkbox" id="f_srvmgr"><span class="tk"></span>
+        <span class="lbl">Don't open Server Manager at logon</span>
+      </label>
+      <label class="sw">
+        <input type="checkbox" id="f_psremote"><span class="tk"></span>
+        <span class="lbl">Enable PowerShell remoting <small>(first-logon command)</small></span>
+      </label>
+      <label class="sw">
+        <input type="checkbox" id="f_packerwinrm"><span class="tk"></span>
+        <span class="lbl">WinRM bootstrap for Packer <small>(first-logon: HTTP 5985, Basic auth, unencrypted — isolated build networks only)</small></span>
+      </label>
+    </div>
+  </section>
+
+  <!-- 9 ─ OOBE -->
+  <section class="card" id="sec9">
+    <h2><span class="num">9</span> OOBE <span class="caret">▾</span></h2>
+    <div class="body">
+      <label class="sw"><input type="checkbox" id="f_hideEula" checked><span class="tk"></span><span class="lbl">Hide EULA page</span></label>
+      <label class="sw"><input type="checkbox" id="f_hideLocal" checked><span class="tk"></span><span class="lbl">Hide local account screen</span></label>
+      <label class="sw"><input type="checkbox" id="f_hideOem" checked><span class="tk"></span><span class="lbl">Hide OEM registration screen</span></label>
+      <label class="sw"><input type="checkbox" id="f_hideOnline" checked><span class="tk"></span><span class="lbl">Hide online account screens</span></label>
+      <label class="sw"><input type="checkbox" id="f_hideWireless" checked><span class="tk"></span><span class="lbl">Hide wireless setup in OOBE</span></label>
+      <div class="field" style="max-width:340px">
+        <label for="f_pypc">Protect Your PC (telemetry/updates prompts)</label>
+        <select id="f_pypc">
+          <option value="1">1 — Recommended settings</option>
+          <option value="2">2 — Updates only</option>
+          <option value="3" selected>3 — Disabled (typical for servers)</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 ─ Commands -->
+  <section class="card" id="sec10">
+    <h2><span class="num">10</span> Custom commands <span class="caret">▾</span></h2>
+    <div class="body">
+      <div class="field">
+        <label>Specialize pass — RunSynchronous (runs as SYSTEM before first logon)</label>
+        <div class="rows" id="runSyncList"></div>
+        <div><button class="mini" id="btnAddRunSync">+ Add specialize command</button></div>
+      </div>
+      <div class="field">
+        <label>First logon commands (run at first interactive Administrator logon)</label>
+        <div class="rows" id="firstLogonList"></div>
+        <div><button class="mini" id="btnAddFirstLogon">+ Add first-logon command</button></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<aside>
+  <div class="ptabs">
+    <button id="tabGen" class="on">Generated XML</button>
+    <button id="tabEd">Editor</button>
+    <div class="spacer"></div>
+    <div class="tools">
+      <span class="hint" id="genStamp"></span>
+    </div>
+  </div>
+  <div id="importReport" class="banner warn"></div>
+  <pre id="xmlout"></pre>
+  <div id="edwrap">
+    <textarea id="xmled" spellcheck="false" placeholder="Upload an unattend.xml, or click “Copy generated → editor” to hand-edit the output here…"></textarea>
+    <div class="edbar">
+      <button class="mini" id="btnGenToEd">Copy generated → editor</button>
+      <button class="mini" id="btnEdToForm">Import editor XML → form</button>
+      <button class="mini" id="btnValidate">Validate XML</button>
+      <span class="status hint" id="edStatus"></span>
+    </div>
+  </div>
+  <div class="statusbar">
+    <span>Passes: <b id="stPasses">–</b></span>
+    <span>Components: <b id="stComps">–</b></span>
+    <span>Size: <b id="stSize">–</b></span>
+    <span id="stMode">Download source: <b>Generated</b></span>
+  </div>
+</aside>
+</main>
+
+<footer>
+  Runs entirely in your browser — nothing is uploaded anywhere. Name the file <b>autounattend.xml</b> at the root of the install USB/ISO,
+  or <b>unattend.xml</b> for DISM / imaging pipelines. Schema reference:
+  <a href="https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/" target="_blank" rel="noopener">Microsoft Unattend documentation</a>.
+</footer>
+
+<!-- Plain scripts (not ES modules) so the app still works when opened directly
+     from the filesystem (file://). Load order matters: data → util → state →
+     generator → importer → app (app wires events and runs init). -->
+<script src="js/data.js"></script>
+<script src="js/util.js"></script>
+<script src="js/state.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/importer.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
