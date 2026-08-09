@@ -66,9 +66,11 @@ function setTab(t){
   activeTab = t;
   $('tabGen').classList.toggle('on', t === 'gen');
   $('tabEd').classList.toggle('on', t === 'ed');
+  $('tabGuide').classList.toggle('on', t === 'guide');
   $('xmlout').style.display = t === 'gen' ? '' : 'none';
   $('edwrap').style.display = t === 'ed' ? 'flex' : 'none';
-  $('stMode').innerHTML = 'Download source: <b>' + (t === 'gen' ? 'Generated' : 'Editor') + '</b>';
+  $('guidewrap').style.display = t === 'guide' ? 'block' : 'none';
+  $('stMode').innerHTML = 'Download source: <b>' + (t === 'ed' ? 'Editor' : 'Generated') + '</b>';
 }
 
 function download(){
@@ -148,6 +150,21 @@ $('btnEye').addEventListener('click', e => {
 
 $('tabGen').addEventListener('click', () => setTab('gen'));
 $('tabEd').addEventListener('click', () => setTab('ed'));
+$('tabGuide').addEventListener('click', () => setTab('guide'));
+
+// copy buttons on the guide's code blocks
+$('guidewrap').addEventListener('click', async e => {
+  if (!e.target.classList.contains('gcopy')) return;
+  const pre = e.target.parentElement.querySelector('pre');
+  try{ await navigator.clipboard.writeText(pre.textContent); }
+  catch(err){
+    const ta = document.createElement('textarea');
+    ta.value = pre.textContent; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  e.target.textContent = '✓ Copied';
+  setTimeout(() => e.target.textContent = 'Copy', 1400);
+});
 $('btnDownload').addEventListener('click', download);
 $('btnCopy').addEventListener('click', copyOut);
 $('btnUpload').addEventListener('click', () => $('fileInput').click());

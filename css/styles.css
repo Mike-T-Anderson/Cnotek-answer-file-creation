@@ -143,6 +143,42 @@ aside{
   flex:1; resize:none; border:none; border-radius:0; background:var(--panel2);
   font-family:var(--mono); font-size:12px; line-height:1.55; padding:14px 16px; white-space:pre;
 }
+/* ------ Packer guide tab ------ */
+#guidewrap{flex:1; overflow:auto; display:none; padding:14px 18px 24px; background:var(--panel2); font-size:13px}
+.guide h3{
+  font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:var(--text);
+  margin:20px 0 8px; display:flex; align-items:center; gap:8px;
+}
+.guide h3:first-child{margin-top:2px}
+.guide .gnum{
+  font-size:10px; color:var(--acc); background:rgba(77,163,255,.12);
+  border:1px solid rgba(77,163,255,.3); border-radius:5px; padding:1px 6px;
+}
+.guide p,.guide li{color:var(--muted); line-height:1.55}
+.guide b{color:var(--text)}
+.guide ul{margin:6px 0; padding-left:20px}
+.guide code{font-family:var(--mono); font-size:11.5px; color:#a9c3ee; background:#0a1120; padding:1px 5px; border-radius:4px}
+.guide .gnote{
+  border-left:3px solid var(--acc-dim); background:rgba(77,163,255,.06);
+  padding:7px 10px; border-radius:0 8px 8px 0; font-size:12px; margin:8px 0;
+}
+.guide .gflow{
+  display:flex; flex-wrap:wrap; gap:6px; align-items:center; color:var(--muted);
+  background:#0a1120; border:1px solid var(--line2); border-radius:9px; padding:10px 12px; font-size:12px;
+}
+.guide .gflow span{
+  background:var(--panel); border:1px solid var(--line2); border-radius:6px;
+  padding:3px 8px; color:var(--text); white-space:nowrap;
+}
+.gblock{position:relative; margin:8px 0}
+.gblock pre{
+  background:#0a1120; border:1px solid var(--line2); border-radius:9px;
+  padding:12px 14px; overflow:auto; font-family:var(--mono); font-size:11.5px;
+  line-height:1.5; color:#c7d5f2; margin:0; white-space:pre;
+}
+.gblock .gcopy{position:absolute; top:8px; right:8px; opacity:.75}
+.gblock .gcopy:hover{opacity:1}
+
 .edbar{display:flex; gap:6px; padding:8px; border-top:1px solid var(--line); flex-wrap:wrap; align-items:center}
 .edbar .status{font-size:11.5px; margin-left:auto}
 .statusbar{

@@ -46,6 +46,7 @@ The scripts are deliberately classic `<script>` tags rather than ES modules so t
 - **Domain join or workgroup** — including machine OU and join credentials.
 - **Quick tweaks** — enable RDP (+NLA + firewall group), disable IE ESC via the documented `Microsoft-Windows-IE-ESC` component (2019/2022 only — auto-dropped for 2025 where IE ESC no longer exists), high-performance power plan, suppress Server Manager at logon, enable PowerShell remoting, WinRM bootstrap for Packer.
 - **⚡ Packer golden-image preset** — one click configures the form for a Packer build on Hyper-V Gen 2 (see below).
+- **Packer guide tab** — a built-in step-by-step walkthrough of the whole golden-image pipeline (generate → build → sysprep → clone → rename/domain-join), with copy-ready HCL, sysprep deploy-unattend, and Jenkins snippets.
 - **OOBE flags** and custom commands (specialize `RunSynchronous` + `FirstLogonCommands`).
 - **Upload & edit existing XML** — parses a file back into the form (including decoding obfuscated passwords), flags any components the form doesn't model, and keeps the original in a raw **Editor** tab for hand-editing and download.
 - Live syntax-highlighted preview, copy/download, inline validation (computer name, key format, IP formats, missing credentials, missing Administrator password — Server OOBE stops without one, product key on eval media), and form auto-save in the browser (passwords are never saved).

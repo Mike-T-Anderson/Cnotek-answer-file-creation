@@ -387,6 +387,7 @@
   <div class="ptabs">
     <button id="tabGen" class="on">Generated XML</button>
     <button id="tabEd">Editor</button>
+    <button id="tabGuide">Packer guide</button>
     <div class="spacer"></div>
     <div class="tools">
       <span class="hint" id="genStamp"></span>
@@ -403,6 +404,186 @@
       <span class="status hint" id="edStatus"></span>
     </div>
   </div>
+  <div id="guidewrap" class="guide">
+
+    <h3>The pipeline</h3>
+    <div class="gflow">
+      <span>autounattend.xml</span> → <span>Packer installs + provisions over WinRM</span> →
+      <span>sysprep /generalize /oobe /shutdown</span> → <span>golden VHDX</span> →
+      <span>clone in Hyper-V</span> → <span>Jenkins: rename + domain join over WinRM</span>
+    </div>
+    <p>Two answer files are involved: the <b>install-time</b> file this tool generates (used once, when Packer installs Windows)
+    and a small <b>deploy-time</b> file handed to sysprep (used by every clone to skip OOBE). Identity — name, domain, IP —
+    belongs to the deployment job, never to the image.</p>
+
+    <h3><span class="gnum">1</span> Generate autounattend.xml</h3>
+    <ul>
+      <li>Click <b>⚡ Packer golden-image preset</b> — random computer name, no domain join or static IP, auto-logon ×1, WinRM bootstrap, UEFI/GPT for a Hyper-V <b>Gen 2</b> VM (use BIOS/MBR for Gen 1).</li>
+      <li>Set the <b>Administrator password</b> — this becomes Packer's <code>winrm_password</code>.</li>
+      <li>Pick version and edition; tick <b>Evaluation Center media</b> if building from an eval ISO (eval images are named "… Standard Evaluation …" and the name must match exactly).</li>
+      <li>Download as <code>autounattend.xml</code>.</li>
+    </ul>
+    <p class="gnote">Auto-logon ×1 is what fires the first-logon WinRM bootstrap headlessly. The count is consumed during the build, so clones boot to a normal locked logon screen.</p>
+
+    <h3><span class="gnum">2</span> Create deploy-unattend.xml (for sysprep)</h3>
+    <p>Generalizing wipes OOBE state and the admin password. Without this file every clone stops at the console asking for
+    region, EULA and a new Administrator password — and Jenkins can never connect. Save this next to your Packer template
+    and replace the password/locale values:</p>
+    <div class="gblock">
+      <button class="mini gcopy">Copy</button>
+<pre>&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;unattend xmlns="urn:schemas-microsoft-com:unattend"&gt;
+    &lt;settings pass="oobeSystem"&gt;
+        &lt;component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"&gt;
+            &lt;InputLocale&gt;en-AU&lt;/InputLocale&gt;
+            &lt;SystemLocale&gt;en-AU&lt;/SystemLocale&gt;
+            &lt;UILanguage&gt;en-US&lt;/UILanguage&gt;
+            &lt;UserLocale&gt;en-AU&lt;/UserLocale&gt;
+        &lt;/component&gt;
+        &lt;component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"&gt;
+            &lt;OOBE&gt;
+                &lt;HideEULAPage&gt;true&lt;/HideEULAPage&gt;
+                &lt;HideLocalAccountScreen&gt;true&lt;/HideLocalAccountScreen&gt;
+                &lt;HideOEMRegistrationScreen&gt;true&lt;/HideOEMRegistrationScreen&gt;
+                &lt;HideOnlineAccountScreens&gt;true&lt;/HideOnlineAccountScreens&gt;
+                &lt;HideWirelessSetupInOOBE&gt;true&lt;/HideWirelessSetupInOOBE&gt;
+                &lt;ProtectYourPC&gt;3&lt;/ProtectYourPC&gt;
+            &lt;/OOBE&gt;
+            &lt;TimeZone&gt;AUS Eastern Standard Time&lt;/TimeZone&gt;
+            &lt;UserAccounts&gt;
+                &lt;AdministratorPassword&gt;
+                    &lt;Value&gt;REPLACE-WITH-DEPLOY-PASSWORD&lt;/Value&gt;
+                    &lt;PlainText&gt;true&lt;/PlainText&gt;
+                &lt;/AdministratorPassword&gt;
+            &lt;/UserAccounts&gt;
+        &lt;/component&gt;
+    &lt;/settings&gt;
+&lt;/unattend&gt;</pre>
+    </div>
+    <p class="gnote">No <code>ComputerName</code> here — each clone gets a random name until Jenkins renames it. No windowsPE pass — sysprep boots never run it. This password is what Jenkins authenticates with.</p>
+
+    <h3><span class="gnum">3</span> Packer template (hyperv-iso, Gen 2)</h3>
+    <div class="gblock">
+      <button class="mini gcopy">Copy</button>
+<pre>packer {
+  required_plugins {
+    hyperv = { version = "&gt;= 1.1.0", source = "github.com/hashicorp/hyperv" }
+  }
+}
+
+variable "admin_password" { type = string, sensitive = true }
+
+source "hyperv-iso" "golden" {
+  iso_url          = "./iso/ws2022.iso"
+  iso_checksum     = "sha256:REPLACE"
+  generation       = 2
+  switch_name      = "PackerSwitch"
+  cpus             = 4
+  memory           = 8192
+  disk_size        = 61440
+  vm_name          = "ws2022-std-golden"            # names the VM and the VHDX
+  output_directory = "D:/Templates/ws2022-std-{{timestamp}}"
+  cd_files         = ["./autounattend.xml"]
+  boot_wait        = "1s"
+  boot_command     = ["&lt;enter&gt;"]   # answers "Press any key to boot from DVD"
+
+  communicator     = "winrm"
+  winrm_username   = "Administrator"
+  winrm_password   = var.admin_password
+  winrm_timeout    = "4h"
+
+  shutdown_command = "C:\\Windows\\System32\\Sysprep\\sysprep.exe /generalize /oobe /quiet /shutdown /unattend:C:\\Windows\\Temp\\deploy-unattend.xml"
+  shutdown_timeout = "30m"
+}
+
+build {
+  sources = ["source.hyperv-iso.golden"]
+
+  provisioner "file" {
+    source      = "./deploy-unattend.xml"
+    destination = "C:\\Windows\\Temp\\deploy-unattend.xml"
+  }
+
+  # your provisioners here: Windows updates, agents, hardening ...
+}</pre>
+    </div>
+    <p class="gnote">The <code>file</code> provisioner uploads the deploy unattend over WinRM so sysprep can find it. Keep <code>shutdown_timeout</code> generous — sysprep on a patched image is slow, and an early give-up leaves a half-generalized artifact.</p>
+
+    <h3><span class="gnum">4</span> Build, name &amp; protect the template</h3>
+    <div class="gblock">
+      <button class="mini gcopy">Copy</button>
+<pre>packer build -var "admin_password=$env:PACKER_ADMIN_PW" .</pre>
+    </div>
+    <p>The golden image is just a VHDX — nothing inside it depends on the filename, so <b>your naming convention is
+    what identifies it</b>. Name it at build time (<code>vm_name</code> / <code>output_directory</code> in the template
+    above), or rename it afterwards — safe for a fresh template, because nothing references its path yet:</p>
+    <div class="gblock">
+      <button class="mini gcopy">Copy</button>
+<pre># find the VHDX packer just built — the output folder name contains a
+# timestamp, so discover it instead of guessing the path
+$built = Get-ChildItem "D:\Templates\ws2022-std-*\Virtual Hard Disks\*.vhdx" |
+         Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+# move it into the templates root with a versioned name
+# (one folder = the contract: if it lives in D:\Templates, it's a golden image)
+$gold = "D:\Templates\ws2022-std-golden-$(Get-Date -Format 'yyyy.MM.dd').vhdx"
+Move-Item $built.FullName $gold
+
+# clean up packer's now-empty output folder (leftover exported VM config)
+Remove-Item $built.Directory.Parent.FullName -Recurse -Force
+
+# insurance: nobody boots or edits the master (clone jobs Copy-Item from it)
+Set-ItemProperty $gold -Name IsReadOnly -Value $true
+
+# optional: checksum + build metadata beside it for later audits
+Get-FileHash $gold -Algorithm SHA256 | ConvertTo-Json |
+    Set-Content ($gold -replace '\.vhdx$', '.json')</pre>
+    </div>
+    <p class="gnote">Prefer determinism over discovery? Have Jenkins pass its build number into the template —
+    <code>output_directory = "D:/Templates/build-${var.build_id}"</code> — and the path is known exactly, no glob needed.</p>
+    <ul>
+      <li><b>Never boot the template after sysprep</b> — the first boot consumes the generalized state. Clone the VHDX; the read-only bit keeps it honest.</li>
+      <li><b>Version with a date or build number</b> so you can roll back a bad image — the clone job just picks the newest file matching the pattern.</li>
+      <li>Only rename a VHDX nothing references yet — a VM config or differencing disk pointing at the old path would break.</li>
+      <li>Rebuild rather than re-sysprep repeatedly — sysprep has a limited rearm count.</li>
+    </ul>
+
+    <h3><span class="gnum">5</span> Clone, rename, join (Jenkins)</h3>
+    <p>Clones boot straight to the logon screen with WinRM listening. From the Hyper-V host (or a Jenkins agent on it):</p>
+    <div class="gblock">
+      <button class="mini gcopy">Copy</button>
+<pre># $vmName is the Hyper-V VM object name YOU chose at New-VM/clone time —
+# not the guest's random Windows hostname. The IP is read via Integration
+# Services (KVP), so DNS and the hostname are never involved.
+# Tip: name the VM after the final hostname so $vmName doubles as -NewName.
+do {
+    Start-Sleep -Seconds 5
+    $ip = (Get-VMNetworkAdapter -VMName $vmName).IPAddresses |
+          Where-Object { $_ -match '^\d+\.' -and $_ -notmatch '^169\.254\.' } |
+          Select-Object -First 1
+} until ($ip)
+
+$loc = New-Object PSCredential('Administrator',
+       (ConvertTo-SecureString $env:LOCAL_ADMIN_PW -AsPlainText -Force))
+
+Invoke-Command -ComputerName $ip -Credential $loc -Authentication Negotiate -ScriptBlock {
+    $join = New-Object PSCredential($using:joinUser,
+            (ConvertTo-SecureString $using:joinPw -AsPlainText -Force))
+    Add-Computer -DomainName corp.example.com -NewName $using:newName `
+                 -OUPath 'OU=Servers,DC=corp,DC=example,DC=com' `
+                 -Credential $join -Restart
+}</pre>
+    </div>
+    <p class="gnote"><code>-NewName</code> renames and joins in one operation — one reboot, and the AD object is created with the final name. Use the built-in <code>Administrator</code>: other local admins get a filtered token over WinRM unless <code>LocalAccountTokenFilterPolicy</code> is set.</p>
+
+    <h3>Security notes</h3>
+    <ul>
+      <li>The WinRM bootstrap allows <b>Basic + unencrypted</b> HTTP — fine on an isolated build network, but it persists into clones. To harden, add a final provisioner before sysprep: <code>winrm set winrm/config/service @{AllowUnencrypted="false"}</code> and disable Basic — Jenkins still works via <code>-Authentication Negotiate</code> (NTLM encrypts over HTTP).</li>
+      <li>Passwords in both XMLs are at best Base64-obfuscated. Keep generated files out of the public repo; template the real password in from Packer variables / Jenkins credentials.</li>
+      <li>After domain join, rotate or disable the local Administrator (GPO/LAPS) — it's a bootstrap credential only.</li>
+    </ul>
+  </div>
+
   <div class="statusbar">
     <span>Passes: <b id="stPasses">–</b></span>
     <span>Components: <b id="stComps">–</b></span>
